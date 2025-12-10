@@ -78,6 +78,44 @@
     .lightbox .close{position:absolute;top:14px;right:16px}
     .icon-btn{cursor:pointer;border:1px solid var(--border);background:#0f172a;border-radius:10px;padding:8px 10px;color:#e5e7eb}
 
+    /* M20 tooltip + view toggle */
+    .m20-tooltip{
+      position:fixed;
+      pointer-events:none;
+      background:rgba(15,23,42,.95);
+      color:#e5e7eb;
+      padding:6px 8px;
+      border-radius:6px;
+      border:1px solid var(--border);
+      font-size:12px;
+      z-index:1000;
+      opacity:0;
+      transition:opacity .12s ease-out;
+      white-space:nowrap;
+    }
+    .m20-toggle{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:8px;
+      font-size:12px;
+      color:var(--muted);
+    }
+    .m20-toggle button{
+      cursor:pointer;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#0f172a;
+      color:var(--muted);
+      padding:4px 10px;
+      font-size:12px;
+    }
+    .m20-toggle button.active{
+      background:var(--brand);
+      color:#0b1120;
+      border-color:var(--brand);
+    }
+
     /* Before/After slider (non-graph interactivity) */
     .ba{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);height:280px}
     .ba img{position:absolute;inset:0;height:100%;width:100%;object-fit:cover}
@@ -320,6 +358,31 @@
       const container = d3.select('#m20Viz');
       if (container.empty()) return;
 
+      // Tooltip for hover details
+      const tooltip = d3.select('body')
+        .append('div')
+        .attr('class', 'm20-tooltip');
+
+      // View toggle (histogram vs scatter)
+      const toggleWrap = container.append('div')
+        .attr('class', 'm20-toggle');
+
+      toggleWrap.append('span').text('View:');
+
+      const modes = [
+        { id: 'hist', label: 'Histogram' },
+        { id: 'scatter', label: 'Scatter' }
+      ];
+      let currentMode = 'hist';
+
+      const modeButtons = toggleWrap.selectAll('button')
+        .data(modes)
+        .enter()
+        .append('button')
+        .attr('type', 'button')
+        .classed('active', d => d.id === currentMode)
+        .text(d => d.label);
+
       const width = 800;
       const height = 360;
       const margin = { top: 20, right: 20, bottom: 50, left: 60 };
@@ -353,8 +416,26 @@
           .nice()
           .range([plotHeight, 0]);
 
+        function updateTooltip(event, d) {
+          const density = d.density_pfcal || 0;
+          const gauss = d.gauss_pfcal || 0;
+          tooltip
+            .style('opacity', 1)
+            .style('left', (event.clientX + 12) + 'px')
+            .style('top', (event.clientY + 12) + 'px')
+            .html(
+              `Bin: ${d.bin_left.toFixed(2)}–${d.bin_right.toFixed(2)} µm<br>` +
+              `Density: ${density.toFixed(3)}<br>` +
+              `Gaussian: ${gauss.toFixed(3)}`
+            );
+        }
+
+        function hideTooltip() {
+          tooltip.style('opacity', 0);
+        }
+
         // Bars: PF-calibrated histogram
-        g.selectAll('rect.bar')
+        const bars = g.selectAll('rect.bar')
           .data(data)
           .join('rect')
           .attr('class', 'bar')
@@ -363,7 +444,16 @@
           .attr('y', d => y(d.density_pfcal || 0))
           .attr('height', d => y(0) - y(d.density_pfcal || 0))
           .attr('fill', '#60a5fa')
-          .attr('opacity', 0.7);
+          .attr('opacity', 0.7)
+          .on('mouseover', function (event, d) {
+            d3.select(this).attr('opacity', 1);
+            updateTooltip(event, d);
+          })
+          .on('mousemove', updateTooltip)
+          .on('mouseout', function () {
+            d3.select(this).attr('opacity', 0.7);
+            hideTooltip();
+          });
 
         // Gaussian fit line
         const line = d3.line()
@@ -371,8 +461,9 @@
           .y(d => y(d.gauss_pfcal || 0))
           .curve(d3.curveMonotoneX);
 
-        g.append('path')
+        const linePath = g.append('path')
           .datum(data)
+          .attr('class', 'gauss-line')
           .attr('fill', 'none')
           .attr('stroke', '#f59e0b')
           .attr('stroke-width', 2)
@@ -424,6 +515,46 @@
             .attr('fill', '#e5e7eb')
             .attr('font-size', 12)
             .text(item.label);
+        });
+
+        // Scatter representation: bin centers as points
+        const scatterLayer = g.append('g')
+          .attr('class', 'm20-scatter');
+
+        const scatterPoints = scatterLayer.selectAll('circle.scatter-point')
+          .data(data)
+          .join('circle')
+          .attr('class', 'scatter-point')
+          .attr('cx', d => x(d.bin_center))
+          .attr('cy', d => y(d.density_pfcal || 0))
+          .attr('r', 3)
+          .attr('fill', '#f97316')
+          .attr('opacity', 0)
+          .on('mouseover', function (event, d) {
+            d3.select(this).attr('r', 4);
+            updateTooltip(event, d);
+          })
+          .on('mousemove', updateTooltip)
+          .on('mouseout', function () {
+            d3.select(this).attr('r', 3);
+            hideTooltip();
+          });
+
+        function setMode(mode) {
+          currentMode = mode;
+          modeButtons.classed('active', d => d.id === currentMode);
+          const showHist = currentMode === 'hist';
+          bars.attr('opacity', showHist ? 0.7 : 0);
+          linePath.attr('opacity', showHist ? 1 : 0);
+          scatterPoints.attr('opacity', showHist ? 0 : 0.9);
+        }
+
+        setMode(currentMode);
+
+        modeButtons.on('click', (event, d) => {
+          if (d.id !== currentMode) {
+            setMode(d.id);
+          }
         });
       });
     })();
