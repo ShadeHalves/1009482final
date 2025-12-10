@@ -114,6 +114,26 @@
       border-color:var(--brand);
     }
 
+    /* Back-to-top buttons on cards */
+    .back-top-wrap{
+      margin-top:12px;
+      text-align:right;
+    }
+    .back-top-btn{
+      cursor:pointer;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:#f9fafb;
+      color:var(--muted);
+      padding:4px 10px;
+      font-size:12px;
+    }
+    .back-top-btn:hover{
+      background:#eff6ff;
+      color:#111827;
+      border-color:#93c5fd;
+    }
+
     /* Before/After slider (non-graph interactivity) */
     .ba{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--border);height:280px}
     .ba img{position:absolute;inset:0;height:100%;width:100%;object-fit:cover}
@@ -307,6 +327,21 @@
   <script>
     // Footer year
     document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Back-to-top buttons on section cards
+    document.querySelectorAll('section.card').forEach(section => {
+      const wrap = document.createElement('div');
+      wrap.className = 'back-top-wrap';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'back-top-btn';
+      btn.textContent = 'Back to top';
+      btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      wrap.appendChild(btn);
+      section.appendChild(wrap);
+    });
 
     // ===== Gallery filter =====
     const grid = document.getElementById('galleryGrid');
