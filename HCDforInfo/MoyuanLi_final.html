@@ -457,7 +457,7 @@
             .style('left', (event.clientX + 12) + 'px')
             .style('top', (event.clientY + 12) + 'px')
             .html(
-              `Bin: ${d.bin_left.toFixed(2)}?{d.bin_right.toFixed(2)} µm<br>` +
+              `Bin: ${d.bin_left.toFixed(2)}-${d.bin_right.toFixed(2)} µm<br>` +
               `Density: ${density.toFixed(3)}<br>` +
               `Gaussian: ${gauss.toFixed(3)}`
             );
