@@ -320,7 +320,7 @@
 
   <!-- ===== Light interactivity (no charts) ===== -->
   <div class="lightbox" id="lightbox" aria-modal="true" role="dialog" aria-label="Image viewer">
-    <button class="icon-btn close" id="closeLb" aria-label="Close">?/button>
+    <button class="icon-btn close" id="closeLb" aria-label="Close">×</button>
     <img id="lbImg" alt="Expanded visual" />
   </div>
 
@@ -361,7 +361,9 @@
     const closeLb = document.getElementById('closeLb');
 
     grid.addEventListener('click', (e) => {
-      const img = e.target.closest('img');
+      const fig = e.target.closest('.thumb');
+      if (!fig) return;
+      const img = fig.querySelector('img');
       if (!img) return;
       lbImg.src = img.src;
       lb.classList.add('open');
